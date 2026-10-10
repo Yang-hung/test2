@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Labubu 決策冒險隊 - Decision Arena</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Canvas-Confetti 慶祝特效 -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    @keyframes shake {
+      0%, 100% { transform: rotate(0deg); }
+      20% { transform: rotate(-12deg); }
+      40% { transform: rotate(10deg); }
+      60% { transform: rotate(-8deg); }
+      80% { transform: rotate(6deg); }
+    }
+    .animate-shake {
+      animation: shake 0.5s ease-in-out infinite;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-amber-50 via-orange-50 to-pink-50 min-h-screen text-slate-800 flex flex-col items-center p-4 selection:bg-pink-200">
+
+  <!-- 頂部導航列 -->
+  <header class="w-full max-w-md flex items-center justify-between py-4 mb-2">
+    <div class="flex items-center gap-2">
+      <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-500 to-amber-400 flex items-center justify-center text-white shadow-md">
+        <i data-lucide="sparkles" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <h1 class="font-extrabold text-xl tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-pink-600 to-amber-600">Labubu 決策者</h1>
+        <p class="text-xs text-slate-400 font-medium">今天吃什麼？讓命運決定！</p>
+      </div>
+    </div>
+    <!-- 模式切換按鈕群組 -->
+    <div class="flex bg-white/70 backdrop-blur p-1 rounded-xl shadow-sm border border-slate-200/60" id="mode-tabs">
+      <button data-mode="wheel" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 bg-pink-500 text-white shadow-sm">
+        <i data-lucide="disc" class="w-3.5 h-3.5"></i> 轉盤
+      </button>
+      <button data-mode="sticks" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1">
+        <i data-lucide="layers" class="w-3.5 h-3.5"></i> 籤筒
+      </button>
+      <button data-mode="rps" class="tab-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1">
+        <i data-lucide="swords" class="w-3.5 h-3.5"></i> 猜拳
+      </button>
+    </div>
+  </header>
+
+  <!-- 主競技場容器 (Decision Arena) -->
+  <main class="w-full max-w-md flex flex-col gap-5">
+    
+    <!-- 決策展示區塊 -->
+    <div class="bg-white/80 backdrop-blur-md rounded-3xl p-6 shadow-xl shadow-pink-500/5 border border-white/60 flex flex-col items-center relative overflow-hidden">
+      
+      <!-- 轉盤模式 -->
+      <section id="view-wheel" class="mode-view flex flex-col items-center w-full">
+        <div class="relative w-64 h-64 flex items-center justify-center my-2">
+          <!-- 頂部指針 -->
+          <div class="absolute -top-3 z-20 text-rose-500 drop-shadow-md">
+            <i data-lucide="chevron-down" class="w-8 h-8 fill-rose-500"></i>
+          </div>
+          <canvas id="wheel-canvas" width="256" height="256" class="rounded-full shadow-lg border-4 border-white"></canvas>
+        </div>
+        <button id="btn-spin" class="mt-4 px-6 py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 text-white font-bold rounded-full shadow-lg shadow-pink-500/30 hover:brightness-105 active:scale-95 transition">
+          開始轉動
+        </button>
+      </section>
+
+      <!-- 籤筒模式 -->
+      <section id="view-sticks" class="mode-view hidden flex-col items-center w-full py-4">
+        <div id="stick-box" class="w-36 h-48 bg-gradient-to-b from-amber-600 to-amber-800 rounded-b-3xl rounded-t-lg shadow-inner flex flex-col items-center justify-center border-4 border-amber-500 relative cursor-pointer group">
+          <div class="absolute -top-6 flex gap-1 items-end h-8 overflow-visible" id="stick-heads">
+            <span class="w-2.5 h-10 bg-amber-200 border border-amber-400 rounded-t transform -rotate-6"></span>
+            <span class="w-2.5 h-12 bg-amber-200 border border-amber-400 rounded-t transform rotate-3"></span>
+            <span class="w-2.5 h-11 bg-amber-200 border border-amber-400 rounded-t transform -rotate-2"></span>
+          </div>
+          <span class="text-white font-black text-xl tracking-widest border-2 border-amber-400 px-3 py-1 rounded">命運籤</span>
+        </div>
+        <button id="btn-draw-stick" class="mt-6 px-6 py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-full shadow-lg shadow-orange-500/30 hover:brightness-105 active:scale-95 transition">
+          搖一搖抽籤
+        </button>
+      </section>
+
+      <!-- 猜拳模式 -->
+      <section id="view-rps" class="mode-view hidden flex-col items-center w-full py-4">
+        <div class="flex items-center justify-around w-full my-6">
+          <div class="text-center">
+            <p class="text-xs font-bold text-slate-400 mb-2">你的選擇</p>
+            <div id="player-hand" class="text-5xl bg-amber-100 p-4 rounded-2xl shadow-sm border border-amber-200">✊</div>
+          </div>
+          <span class="text-lg font-black text-slate-300">VS</span>
+          <div class="text-center">
+            <p class="text-xs font-bold text-slate-400 mb-2">命運對手</p>
+            <div id="ai-hand" class="text-5xl bg-rose-100 p-4 rounded-2xl shadow-sm border border-rose-200">🤖</div>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <button data-hand="✊" class="rps-choice px-4 py-2 bg-white rounded-xl shadow border border-slate-200 text-lg hover:border-pink-400 transition">✊ 石頭</button>
+          <button data-hand="✌️" class="rps-choice px-4 py-2 bg-white rounded-xl shadow border border-slate-200 text-lg hover:border-pink-400 transition">✌️ 剪刀</button>
+          <button data-hand="🖐️" class="rps-choice px-4 py-2 bg-white rounded-xl shadow border border-slate-200 text-lg hover:border-pink-400 transition">🖐️ 布</button>
+        </div>
+      </section>
+
+      <!-- 結果提示卡 -->
+      <div id="result-box" class="mt-5 w-full bg-slate-50 border border-slate-100 rounded-2xl p-3 text-center transition-all opacity-0 pointer-events-none">
+        <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Decision Result</span>
+        <span id="result-text" class="text-lg font-black text-pink-600">--</span>
+      </div>
+    </div>
+
+    <!-- 選項管理區塊 (OptionsScreen) -->
+    <div class="bg-white/80 backdrop-blur-md rounded-3xl p-5 shadow-xl shadow-slate-200/50 border border-white/60">
+      <div class="flex justify-between items-center mb-3">
+        <h2 class="font-bold text-sm text-slate-700 flex items-center gap-1.5">
+          <i data-lucide="list-checks" class="w-4 h-4 text-pink-500"></i> 自訂選項池
+        </h2>
+        <span id="item-count" class="text-xs font-semibold px-2 py-0.5 bg-slate-100 text-slate-500 rounded-full">0 個選項</span>
+      </div>
+
+      <!-- 輸入框 -->
+      <form id="add-form" class="flex gap-2 mb-3">
+        <input type="text" id="option-input" placeholder="輸入選項 (例如：日式拉麵)" class="flex-1 text-sm bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-pink-400 transition">
+        <button type="submit" class="px-3.5 py-2 bg-slate-900 text-white rounded-xl text-sm font-semibold hover:bg-slate-800 active:scale-95 transition flex items-center gap-1">
+          <i data-lucide="plus" class="w-4 h-4"></i> 新增
+        </button>
+      </form>
+
+      <!-- 標籤清單 -->
+      <div id="options-list" class="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+        <!-- 動態渲染選項項目 -->
+      </div>
+    </div>
+  </main>
+
+  <!-- 網頁原生 Toast 浮動提示 -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white px-4 py-2 rounded-full text-xs font-medium backdrop-blur shadow-lg opacity-0 transition-opacity duration-300 pointer-events-none flex items-center gap-1.5">
+    <i data-lucide="info" class="w-3.5 h-3.5"></i>
+    <span id="toast-msg">提示訊息</span>
+  </div>
+
+  <script>
+    // --- 狀態管理 (對應 ViewModel 與 LocalStorage) ---
+    const STORAGE_KEY = 'labubu_decision_options';
+    const DEFAULT_OPTIONS = ['日式拉麵', '韓式炸雞', '健康沙拉', '鐵板燒', '火鍋套餐', '便當快餐'];
+
+    let options = JSON.parse(localStorage.getItem(STORAGE_KEY)) || DEFAULT_OPTIONS;
+    let currentMode = 'wheel';
+    let isSpinning = false;
+    let wheelAngle = 0;
+
+    // --- 色彩組（支援轉盤渲染）---
+    const WHEEL_COLORS = ['#F43F5E', '#FB923C', '#FBBF24', '#34D399', '#60A5FA', '#A78BFA', '#F472B6'];
+
+    // --- DOM 快取 ---
+    const optionsListEl = document.getElementById('options-list');
+    const optionInputEl = document.getElementById('option-input');
+    const itemCountEl = document.getElementById('item-count');
+    const resultBoxEl = document.getElementById('result-box');
+    const resultTextEl = document.getElementById('result-text');
+    const canvas = document.getElementById('wheel-canvas');
+    const ctx = canvas.getContext('2d');
+
+    // --- 原生 Toast 替代方案 ---
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      const toastMsg = document.getElementById('toast-msg');
+      toastMsg.textContent = msg;
+      toast.classList.remove('opacity-0');
+      setTimeout(() => toast.classList.add('opacity-0'), 2200);
+    }
+
+    // --- 觸發慶祝特效 ---
+    function triggerWinEffects(text) {
+      resultTextEl.textContent = text;
+      resultBoxEl.classList.remove('opacity-0', 'pointer-events-none');
+      if (typeof confetti === 'function') {
+        confetti({ particleCount: 60, spread: 60, origin: { y: 0.7 } });
+      }
+    }
+
+    // --- 選項渲染與持久化 ---
+    function saveAndRenderOptions() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(options));
+      itemCountEl.textContent = `${options.length} 個選項`;
+      optionsListEl.innerHTML = '';
+
+      options.forEach((opt, idx) => {
+        const chip = document.createElement('div');
+        chip.className = 'group flex items-center gap-1.5 bg-slate-100 hover:bg-pink-50 border border-slate-200 hover:border-pink-200 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-700 transition';
+        chip.innerHTML = `
+          <span>${opt}</span>
+          <button data-index="${idx}" class="del-btn text-slate-400 hover:text-rose-500 transition">
+            <i data-lucide="x" class="w-3 h-3"></i>
+          </button>
+        `;
+        optionsListEl.appendChild(chip);
+      });
+      lucide.createIcons();
+      drawWheel();
+    }
+
+    // --- 轉盤繪製 (替代 Compose Canvas 繪製邏輯) ---
+    function drawWheel() {
+      const numOptions = options.length;
+      const radius = canvas.width / 2;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (numOptions === 0) {
+        ctx.fillStyle = '#E2E8F0';
+        ctx.beginPath();
+        ctx.arc(radius, radius, radius, 0, Math.PI * 2);
+        ctx.fill();
+        return;
+      }
+
+      const arc = (Math.PI * 2) / numOptions;
+      for (let i = 0; i < numOptions; i++) {
+        const start = wheelAngle + i * arc;
+        const end = start + arc;
+        ctx.fillStyle = WHEEL_COLORS[i % WHEEL_COLORS.length];
+        ctx.beginPath();
+        ctx.moveTo(radius, radius);
+        ctx.arc(radius, radius, radius, start, end);
+        ctx.closePath();
+        ctx.fill();
+
+        // 繪製文字
+        ctx.save();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 12px sans-serif';
+        ctx.translate(radius, radius);
+        ctx.rotate(start + arc / 2);
+        ctx.textAlign = 'right';
+        ctx.fillText(options[i].slice(0, 7), radius - 18, 4);
+        ctx.restore();
+      }
+    }
+
+    // --- 轉盤動畫 ---
+    function spinWheel() {
+      if (isSpinning || options.length < 2) {
+        if (options.length < 2) showToast('請至少新增 2 個選項');
+        return;
+      }
+      isSpinning = true;
+      resultBoxEl.classList.add('opacity-0');
+
+      const extraSpins = 5 + Math.floor(Math.random() * 5);
+      const targetDeg = Math.random() * 360;
+      const totalRadian = (extraSpins * 360 + targetDeg) * (Math.PI / 180);
+      const startAngle = wheelAngle;
+      const duration = 3000;
+      const startTime = performance.now();
+
+      function animate(time) {
+        const elapsed = time - startTime;
+        const t = Math.min(elapsed / duration, 1);
+        const easeOut = 1 - Math.pow(1 - t, 3); // 減速曲線
+
+        wheelAngle = startAngle + totalRadian * easeOut;
+        drawWheel();
+
+        if (t < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          isSpinning = false;
+          // 計算指針停留之扇區（指針位於 270 度 / 頂部）
+          const normalized = (2 * Math.PI - (wheelAngle % (2 * Math.PI))) % (2 * Math.PI);
+          const pointerRadian = (normalized + (3 * Math.PI / 2)) % (2 * Math.PI);
+          const arc = (Math.PI * 2) / options.length;
+          const chosenIndex = Math.floor(pointerRadian / arc) % options.length;
+          triggerWinEffects(options[chosenIndex]);
+        }
+      }
+      requestAnimationFrame(animate);
+    }
+
+    // --- 籤筒模式動畫 ---
+    function drawFortuneStick() {
+      if (options.length === 0) return showToast('請先新增選項');
+      const box = document.getElementById('stick-box');
+      box.classList.add('animate-shake');
+      resultBoxEl.classList.add('opacity-0');
+
+      setTimeout(() => {
+        box.classList.remove('animate-shake');
+        const chosen = options[Math.floor(Math.random() * options.length)];
+        triggerWinEffects(`籤詩揭曉：${chosen}`);
+      }, 900);
+    }
+
+    // --- 猜拳模式邏輯 ---
+    function playRPS(playerHand) {
+      const hands = ['✊', '✌️', '🖐️'];
+      const playerEl = document.getElementById('player-hand');
+      const aiEl = document.getElementById('ai-hand');
+      playerEl.textContent = playerHand;
+
+      let counter = 0;
+      const interval = setInterval(() => {
+        aiEl.textContent = hands[counter % 3];
+        counter++;
+      }, 70);
+
+      setTimeout(() => {
+        clearInterval(interval);
+        const aiHand = hands[Math.floor(Math.random() * hands.length)];
+        aiEl.textContent = aiHand;
+
+        let verdict = '';
+        if (playerHand === aiHand) verdict = '平手！命運未分勝負';
+        else if (
+          (playerHand === '✊' && aiHand === '✌️') ||
+          (playerHand === '✌️' && aiHand === '🖐️') ||
+          (playerHand === '🖐️' && aiHand === '✊')
+        ) {
+          verdict = '你贏了！聽你的決定！';
+        } else {
+          verdict = '對手獲勝！交給命運指引！';
+        }
+        triggerWinEffects(verdict);
+      }, 800);
+    }
+
+    // --- 事件綁定 ---
+    document.getElementById('add-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const val = optionInputEl.value.trim();
+      if (!val) return;
+      options.push(val);
+      optionInputEl.value = '';
+      saveAndRenderOptions();
+      showToast('已新增選項');
+    });
+
+    optionsListEl.addEventListener('click', (e) => {
+      const btn = e.target.closest('.del-btn');
+      if (btn) {
+        const index = parseInt(btn.dataset.index, 10);
+        options.splice(index, 1);
+        saveAndRenderOptions();
+      }
+    });
+
+    // 模式頁籤切換
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetMode = btn.dataset.mode;
+        currentMode = targetMode;
+
+        document.querySelectorAll('.tab-btn').forEach(b => {
+          b.className = 'tab-btn px-3 py-1.5 rounded-lg text-xs font-bold text-slate-600 hover:text-slate-900 transition flex items-center gap-1';
+        });
+        btn.className = 'tab-btn px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 bg-pink-500 text-white shadow-sm';
+
+        document.querySelectorAll('.mode-view').forEach(v => v.classList.add('hidden'));
+        document.getElementById(`view-${targetMode}`).classList.remove('hidden');
+        resultBoxEl.classList.add('opacity-0');
+        if (targetMode === 'wheel') drawWheel();
+      });
+    });
+
+    document.getElementById('btn-spin').addEventListener('click', spinWheel);
+    document.getElementById('btn-draw-stick').addEventListener('click', drawFortuneStick);
+    document.querySelectorAll('.rps-choice').forEach(btn => {
+      btn.addEventListener('click', () => playRPS(btn.dataset.hand));
+    });
+
+    // --- 初始化 ---
+    saveAndRenderOptions();
+    lucide.createIcons();
+  </script>
+</body>
+</html>
